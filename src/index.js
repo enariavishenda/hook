@@ -1,5 +1,5 @@
 import ReactDOM from "react-dom";
-import React, { useState, useEffect, useCallback} from "react";
+import React, { useState, useEffect, useCallback, useMemo} from "react";
 
 const App = () => {
 
@@ -35,16 +35,33 @@ const App = () => {
     return fetch(`${_api}${id}`)
         .then(res => res.json())
         .then(data => data)
+
     }
 
     const useRequest = (request) => {
-        const [ dataState, setDataState] = useState(null)
+
+        const initialState = useMemo ( () => ({
+            data: null,
+            loading: true,
+            error: null
+        }), [])
+
+        const [ dataState, setDataState] = useState(initialState)
 
         useEffect(() => {
+            setDataState(initialState)
             let cancel = false
-            request().then(data => !cancel && setDataState(data))
+            request().then(data => !cancel && setDataState({
+                data,
+                loading: false,
+                error: null
+            })).catch(error => ~cancel &&setDataState({
+                data: null,
+                loading: false,
+                error
+            }))
             return () => cancel = true
-        }, [request])
+        }, [request, initialState])
         return dataState
     }
 
@@ -55,7 +72,15 @@ const App = () => {
 
     const PlanetInfo = ({id}) => {
 
-    const data = usePlanetInfo(id)
+    const {data, loading, error} = usePlanetInfo(id)
+
+        if (error) {
+            return <div>Some is wrong</div>
+        }
+
+        if (loading) {
+            return <div>loading...</div>
+        }
 
     return (
         <div>{id} - { data && data.name}</div>
